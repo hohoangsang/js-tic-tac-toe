@@ -60,18 +60,6 @@ export function getCellValueList() {
   }
 }
 
-export function toggleTurn() {
-  //get current turn
-  const currentTurnElement = getCurrentTurnElement();
-  if (!currentTurnElement) return;
-
-  //toggle current turn and udpate DOM
-  currentTurn = currentTurn === TURN.CROSS ? TURN.CIRCLE : TURN.CROSS;
-
-  currentTurnElement.classList.remove(TURN.CROSS, TURN.CIRCLE);
-  currentTurnElement.classList.add(currentTurn);
-}
-
 function checkGameWin(cellValues) {
   let valueWin = undefined;
   let position = [];
