@@ -35,15 +35,117 @@
 // }
 //
 
+import { CELL_VALUE, GAME_STATUS } from "./constants.js";
+
 // Input: an array of 9 items
 // Output: an object as mentioned above
-export function checkGameStatus(cellValues) {
-  // Write your code here ...
-  // Please feel free to add more helper function if you want.
-  // It's not required to write everything just in this function.
+
+export function getCellValueList() {
+  try {
+    return (
+      JSON.parse(localStorage.getItem("cell_value")) || [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]
+    );
+  } catch {
+    return ["", "", "", "", "", "", "", "", ""];
+  }
+}
+
+export function toggleTurn() {
+  //get current turn
+  const currentTurnElement = getCurrentTurnElement();
+  if (!currentTurnElement) return;
+
+  //toggle current turn and udpate DOM
+  currentTurn = currentTurn === TURN.CROSS ? TURN.CIRCLE : TURN.CROSS;
+
+  currentTurnElement.classList.remove(TURN.CROSS, TURN.CIRCLE);
+  currentTurnElement.classList.add(currentTurn);
+}
+
+function checkGameWin(cellValues) {
+  let valueWin = undefined;
+  let position = [];
+
+  const checkSetList = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+
+    [0, 4, 8],
+    [2, 4, 6],
+  ];
+
+  const checkSetIndex = checkSetList.findIndex((set) => {
+    const first = cellValues[set[0]];
+    const second = cellValues[set[1]];
+    const third = cellValues[set[2]];
+
+    return first !== "" && first === second && second === third;
+  });
+
+  if (checkSetIndex >= 0) {
+    position = checkSetList[checkSetIndex];
+    valueWin = cellValues[position[0]];
+  }
 
   return {
-    status: GAME_STATUS.PLAYING,
-    winPositions: [],
+    valueWin,
+    position,
   };
+}
+
+function getLengthCellEmptyList(cellValues) {
+  const emptyList = cellValues.filter((value) => value === "");
+  return emptyList.length;
+}
+
+export function checkGameStatus(cellValues) {
+  if (!Array.isArray(cellValues) || cellValues.length !== 9) {
+    throw new Error("Invalid cell value!");
+  }
+
+  let statusGame = GAME_STATUS.PLAYING;
+  let winPositions = [];
+  let lengthEmptyList = getLengthCellEmptyList(cellValues);
+  const { valueWin, position } = checkGameWin(cellValues);
+
+  if (valueWin) {
+    winPositions = position;
+    statusGame =
+      valueWin === CELL_VALUE.CROSS ? GAME_STATUS.X_WIN : GAME_STATUS.O_WIN;
+    return {
+      status: statusGame,
+      winPositions,
+    };
+  }
+
+  if (lengthEmptyList > 0) {
+    statusGame = GAME_STATUS.PLAYING;
+    return {
+      status: statusGame,
+      winPositions,
+    };
+  }
+
+  if (lengthEmptyList === 0) {
+    statusGame = GAME_STATUS.ENDED;
+    return {
+      status: statusGame,
+      winPositions,
+    };
+  }
 }

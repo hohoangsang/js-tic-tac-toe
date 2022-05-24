@@ -1,10 +1,11 @@
-import { TURN } from "./constants.js";
+import { CELL_VALUE, GAME_STATUS, TURN } from "./constants.js";
 import {
   getCellElementList,
   getCellElementAtIdx,
   getCurrentTurnElement,
   getGameStatusElement,
 } from "./selectors.js";
+import { checkGameStatus, getCellValueList, toggleTurn } from "./utils.js";
 
 /**
  * Global variables
@@ -27,33 +28,113 @@ let cellValues = new Array(9).fill("");
  * 4. On replay button click --> reset game to play again.
  *
  */
-function toggleTurn() {
-  //get current turn
-  const currentTurnElement = getCurrentTurnElement();
-  if (!currentTurnElement) return;
-
-  //toggle current turn and udpate DOM
-  currentTurn = currentTurn === TURN.CROSS ? TURN.CIRCLE : TURN.CROSS;
-
-  currentTurnElement.classList.remove(TURN.CROSS, TURN.CIRCLE);
-  currentTurnElement.classList.add(currentTurn);
-}
 
 function handleCellClick(cell, indexCellElement) {
   //tracking cellElement is clicked
-  //   if (cell.hasAttribute("class")) return;
-
   const isClicked =
     cell.classList.contains(TURN.CIRCLE) || cell.classList.contains(TURN.CROSS);
 
-  if (isClicked) return;
+  if (isClicked || isGameEnded) return;
 
   //apply class of cell element and update DOM
   cell.classList.add(currentTurn);
 
-  toggleTurn();
+  //check status of game
+  const cellValue = getCellValueList();
 
-  //TODO: check status of game
+  cellValue[indexCellElement] =
+    currentTurn === TURN.CROSS ? CELL_VALUE.CROSS : CELL_VALUE.CIRCLE;
+
+  localStorage.setItem("cell_value", JSON.stringify(cellValue));
+
+  const { status, winPositions } = checkGameStatus(cellValue);
+
+  const statusElement = getGameStatusElement();
+  if (statusElement) {
+    switch (status) {
+      case GAME_STATUS.ENDED: {
+        statusElement.textContent = GAME_STATUS.ENDED;
+        isGameEnded = true;
+        break;
+      }
+      case GAME_STATUS.X_WIN: {
+        statusElement.textContent = "X WIN";
+        isGameEnded = true;
+        handleWinGame(winPositions);
+        break;
+      }
+      case GAME_STATUS.O_WIN: {
+        statusElement.textContent = "O WIN";
+        isGameEnded = true;
+        handleWinGame(winPositions);
+        break;
+      }
+
+      default: {
+        statusElement.textContent = GAME_STATUS.PLAYING;
+        break;
+      }
+    }
+  }
+
+  //handle show replay button
+  handleShowReplayButton(status);
+
+  //toogle current turn
+  toggleTurn();
+}
+
+function handleWinGame(winPositions) {
+  if (!Array.isArray(winPositions) || winPositions.length === 0) {
+    throw new Error("Invalid win of position!");
+  }
+
+  winPositions.forEach((position) => {
+    const cellElement = getCellElementAtIdx(position);
+    if (cellElement) cellElement.classList.add(CELL_VALUE.WIN);
+  });
+}
+
+function handleShowReplayButton(status) {
+  const replayButton = document.getElementById("replayGame");
+  if (replayButton) {
+    switch (status) {
+      case GAME_STATUS.ENDED:
+      case GAME_STATUS.X_WIN:
+      case GAME_STATUS.O_WIN: {
+        replayButton.style.display = "block";
+        replayButton.addEventListener("click", () => {
+          handleResetGame(replayButton);
+        });
+        break;
+      }
+      default:
+        //playing
+        replayButton.style.display = "none";
+        break;
+    }
+  }
+}
+
+function handleResetGame(replayButton) {
+  //reset localstorage
+  localStorage.setItem("cell_value", JSON.stringify(new Array(9).fill("")));
+
+  //reset global temp variables
+  isGameEnded = false;
+
+  //reset game board
+  const cellElementList = getCellElementList();
+  if (!cellElementList) return;
+  cellElementList.forEach((liElement) => {
+    liElement.removeAttribute("class");
+  });
+
+  const statusElement = getGameStatusElement();
+  if (statusElement) statusElement.textContent = "LOADING";
+
+  //reset style of replay button
+  replayButton.style.display = "none";
 }
 
 function initCellElementList() {
@@ -68,8 +149,8 @@ function initCellElementList() {
 }
 
 (function () {
+  localStorage.setItem("cell_value", JSON.stringify(cellValues));
+
   //bind click event for all li elements
   initCellElementList();
-
-  //bìn click event for replay button
 })();
